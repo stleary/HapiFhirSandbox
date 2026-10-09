@@ -1,0 +1,22 @@
+{
+  "resourceType": "Observation",
+  "text": {
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">asdf</div>",
+    "status": "generated"
+  },
+  "status": "preliminary",
+  "code": {
+    "coding": [
+      {
+        "code": "abc",
+        "system": "http://loinc.org"
+      }
+    ],
+    "text": "hello world"
+  },
+  "subject": {
+    "reference": "{{base}}/Patient/{{patientId}}",
+    "type": "Patient"
+  },
+  "effectiveDateTime": "2018"
+}

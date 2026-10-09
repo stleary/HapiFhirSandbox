@@ -1,0 +1,513 @@
+{
+  "info": {
+    "_postman_id": "8b6df580-b98e-45a8-8ac0-e7fa3f1a1f4d",
+    "name": "FHIR",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "74196"
+  },
+  "item": [
+    {
+      "name": "Local Server (Module 2)",
+      "item": [
+        {
+          "name": "Capabilities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/metadata",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "metadata"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"patientId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/fhir+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/fhir+json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resourceType\": \"Patient\",\n  \"text\": {\n    \"div\": \"<div xmlns=\\\"http://www.w3.org/1999/xhtml\\\">asdf</div>\",\n    \"status\": \"generated\"\n  },\n  \"name\": [\n    {\n      \"family\": \"Duck\"\n    },\n    {\n      \"given\": [\n        \"Dewey\"\n      ]\n    }\n  ],\n  \"gender\": \"male\",\n  \"birthDate\": \"1980-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base}}/Patient",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "Patient"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Observation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"patientId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/fhir+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/fhir+json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resourceType\": \"Observation\",\n  \"text\": {\n    \"div\": \"<div xmlns=\\\"http://www.w3.org/1999/xhtml\\\">asdf</div>\",\n    \"status\": \"generated\"\n  },\n  \"status\": \"preliminary\",\n  \"code\": {\n    \"text\": \"eye color\"\n  },\n  \"subject\": {\n    \"reference\": \"Patient/{{patientId}}\",\n    \"type\": \"Patient\"\n  },\n\n  \"effectiveDateTime\": \"2018\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base}}/Observation",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "Observation"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Read Patient",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/Patient/{{patientId}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "Patient",
+                "{{patientId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Read Patient Version",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/Patient/{{patientId}}/_history/1",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "Patient",
+                "{{patientId}}",
+                "_history",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Patient",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/fhir+json"
+              },
+              {
+                "key": "If-Match",
+                "value": "W/\"2\""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resourceType\": \"Patient\",\n  \"id\": \"{{patientId}}\",\n  \"identifier\": [\n    {\n      \"use\": \"official\",\n      \"value\": \"abc\"\n    },\n    {\n      \"system\": \"changeme again\"\n    }\n  ],\n  \"name\": [\n    {\n      \"family\": \"Duck\"\n    },\n    {\n      \"given\": [\n        \"Donald\"\n      ]\n    }\n  ],\n  \"gender\": \"male\",\n  \"birthDate\": \"1980-01-01\",\n  \"extension\": [\n    {\n      \"url\": \"http://johnjleary.com\",\n      \"_valueBoolean\": true\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base}}/Patient/{{patientId}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "Patient",
+                "{{patientId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patient History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/Patient/{{patientId}}/_history",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "Patient",
+                "{{patientId}}",
+                "_history"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Patient",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/Patient/{{patientId}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "Patient",
+                "{{patientId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "HapiFhir Server (Module 3)",
+      "item": [
+        {
+          "name": "Capabilities HAPI FHIR",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{hapibase}}/metadata",
+              "host": [
+                "{{hapibase}}"
+              ],
+              "path": [
+                "metadata"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patient name,birth,fem",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{hapibase}}/Patient?gender=female&family=Sm&birthdate=lt1960",
+              "host": [
+                "{{hapibase}}"
+              ],
+              "path": [
+                "Patient"
+              ],
+              "query": [
+                {
+                  "key": "gender",
+                  "value": "female"
+                },
+                {
+                  "key": "family",
+                  "value": "Sm"
+                },
+                {
+                  "key": "birthdate",
+                  "value": "lt1960"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Observation heartrate>100, 10/pg, sort reverse",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{hapibase}}/Observation?code=http://loinc.org%7c8867-4&value-quantity=gt100&_count=10&_sort=-date",
+              "host": [
+                "{{hapibase}}"
+              ],
+              "path": [
+                "Observation"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "http://loinc.org%7c8867-4"
+                },
+                {
+                  "key": "value-quantity",
+                  "value": "gt100"
+                },
+                {
+                  "key": "_count",
+                  "value": "10"
+                },
+                {
+                  "key": "_sort",
+                  "value": "-date"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patient with all conditions&encounters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{hapibase}}/Patient?_sort=_id&_count=1&_revinclude=Condition:patient&_revinclude=Encounter:patient",
+              "host": [
+                "{{hapibase}}"
+              ],
+              "path": [
+                "Patient"
+              ],
+              "query": [
+                {
+                  "key": "_sort",
+                  "value": "_id"
+                },
+                {
+                  "key": "_count",
+                  "value": "1"
+                },
+                {
+                  "key": "_revinclude",
+                  "value": "Condition:patient"
+                },
+                {
+                  "key": "_revinclude",
+                  "value": "Encounter:patient"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patient w/ conditions&encounters > 0",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{hapibase}}/Patient?_has:Condition:patient:clinical-status=active&_has:Encounter:patient:status=finished&_sort=_id&_count=1&_revinclude=Condition:patient&_revinclude=Encounter:patient",
+              "host": [
+                "{{hapibase}}"
+              ],
+              "path": [
+                "Patient"
+              ],
+              "query": [
+                {
+                  "key": "_has:Condition:patient:clinical-status",
+                  "value": "active"
+                },
+                {
+                  "key": "_has:Encounter:patient:status",
+                  "value": "finished"
+                },
+                {
+                  "key": "_sort",
+                  "value": "_id"
+                },
+                {
+                  "key": "_count",
+                  "value": "1"
+                },
+                {
+                  "key": "_revinclude",
+                  "value": "Condition:patient"
+                },
+                {
+                  "key": "_revinclude",
+                  "value": "Encounter:patient"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patient w/ >=1 MedicationRequest",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{hapibase}}/Patient?_has:MedicationRequest:patient:status=active&_count=1&_sort=_id&_revinclude=MedicationRequest:patient",
+              "host": [
+                "{{hapibase}}"
+              ],
+              "path": [
+                "Patient"
+              ],
+              "query": [
+                {
+                  "key": "_has:MedicationRequest:patient:status",
+                  "value": "active"
+                },
+                {
+                  "key": "_count",
+                  "value": "1"
+                },
+                {
+                  "key": "_sort",
+                  "value": "_id"
+                },
+                {
+                  "key": "_revinclude",
+                  "value": "MedicationRequest:patient"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patient lenient handling of bad request (does not work)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Prefer",
+                "value": "handling=lenient"
+              }
+            ],
+            "url": {
+              "raw": "{{hapibase}}/Patient?_has:MedicationRequest:patient:status=active&_count=1&_sort=_id&_revinclude=MedicationRequest:patient&abc=def",
+              "host": [
+                "{{hapibase}}"
+              ],
+              "path": [
+                "Patient"
+              ],
+              "query": [
+                {
+                  "key": "_has:MedicationRequest:patient:status",
+                  "value": "active"
+                },
+                {
+                  "key": "_count",
+                  "value": "1"
+                },
+                {
+                  "key": "_sort",
+                  "value": "_id"
+                },
+                {
+                  "key": "_revinclude",
+                  "value": "MedicationRequest:patient"
+                },
+                {
+                  "key": "abc",
+                  "value": "def"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "m.collectionVariables.set(\"patientId\", pm.response.json().id);"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base",
+      "value": ""
+    },
+    {
+      "key": "hapibase",
+      "value": ""
+    },
+    {
+      "key": "patientId",
+      "value": ""
+    }
+  ]
+}
