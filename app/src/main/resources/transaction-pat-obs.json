@@ -1,0 +1,29 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:0f3c6e0a-1111-4d7a-9a55-2b8e5c1f0001",
+      "resource": { "resourceType": "Patient",
+        "identifier": [{ "system": "urn:example:mrn", "value": "12345" }],
+        "name": [{ "family": "Testperson", "given": ["Ada"] }] },
+      "request": { "method": "POST", "url": "Patient",
+        "ifNoneExist": "identifier=urn:example:mrn|12345" }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "identifier": [{ "system": "urn:example:obs", "value": "12345-hr-20260930T0915" }],
+        "status": "final",
+        "code": { "coding": [{ "system": "http://loinc.org", "code": "8867-4" }] },
+        "subject": { "reference": "urn:uuid:0f3c6e0a-1111-4d7a-9a55-2b8e5c1f0001" },
+        "valueQuantity": { "value": 72, "system": "http://unitsofmeasure.org",     "code": "/min" }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Observation",
+        "ifNoneExist": "identifier=urn:example:obs|12345-hr-20260930T0915"
+      }
+    }
+  ]
+}

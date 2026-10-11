@@ -3,12 +3,132 @@
  */
 package org.example;
 
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.api.MethodOutcome;
+import ca.uhn.fhir.rest.api.PreferReturnEnum;
+import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.client.api.ServerValidationModeEnum;
+import ca.uhn.fhir.rest.client.interceptor.LoggingInterceptor;
+
+import org.hl7.fhir.instance.model.api.IIdType;
+import org.hl7.fhir.r4.model.*;
+
+
 public class App {
+
     public String getGreeting() {
         return "Hello World!";
     }
 
+
     public static void main(String[] args) {
+
         System.out.println(new App().getGreeting());
+
+        App app = new App();
+        MyContext localContext = app.setupFhirClient("http://localhost:8080/fhir");
+        MyContext hapiFhirContext = app.setupFhirClient("https://hapi.fhir.org/baseR4");
+
+        // These are test methods to make sure crud, bundle, and transactions are working
+        // app.doCrudOps(localContext);
+        // app.doBundleRead(hapiFhirContext);
+        // app.doTransaction(localContext);
     }
+
+    /**
+     * Sets up the local and hapi fhir clients
+     * @param url url for fhir server
+     * @return MyContext instance for the selected url
+     */
+    private MyContext setupFhirClient(String url) {
+
+        FhirContext ctx = FhirContext.forR4();
+        ctx.getRestfulClientFactory().setSocketTimeout(30_000);
+        // By default the client GETs /metadata before its first call; skip that for known servers
+        ctx.getRestfulClientFactory().setServerValidationMode(ServerValidationModeEnum.NEVER);
+
+        // client = ctx.newRestfulGenericClient("http://localhost:8080/fhir");
+        IGenericClient client = ctx.newRestfulGenericClient(url);
+        client.registerInterceptor(new LoggingInterceptor(true));     // logs requests/responses
+        // client.registerInterceptor(new BearerTokenAuthInterceptor(token));  // Module 7
+        // In Spring Boot, make FhirContext and IGenericClient @Beans.
+        return new MyContext(url, ctx, client);
+    }
+
+    private void doTransaction(MyContext myContext) {
+        Patient p = new Patient();
+        p.addIdentifier().setSystem("urn:example:mrn").setValue("12345");
+        p.addName().setFamily("Testperson").addGiven("Ada");
+
+        Bundle tx = new Bundle().setType(Bundle.BundleType.TRANSACTION);
+        String patientUrn = IdType.newRandomUuid().getValue();   // "urn:uuid:..."
+        tx.addEntry().setFullUrl(patientUrn).setResource(p)
+                .getRequest().setMethod(Bundle.HTTPVerb.POST).setUrl("Patient");
+
+        Observation hr = new Observation();
+        hr.setStatus(Observation.ObservationStatus.FINAL);
+        hr.getCode().addCoding().setSystem("http://loinc.org").setCode("8867-4");
+        hr.setSubject(new Reference(patientUrn));
+        hr.setValue(new Quantity().setValue(72)
+                .setSystem("http://unitsofmeasure.org").setCode("/min"));
+        tx.addEntry().setResource(hr)
+                .getRequest().setMethod(Bundle.HTTPVerb.POST).setUrl("Observation");
+
+        Bundle resp = myContext.getClient().transaction().withBundle(tx).execute();
+        resp.getEntry().forEach(e -> System.out.println(e.getResponse().getLocation()));
+
+   }
+
+
+    // doesn't find anything yet in local host
+    private void doBundleRead(MyContext myContext) {
+        Bundle page = myContext.getClient().search()
+                .forResource(Observation.class)
+                .where(Observation.CODE.exactly().systemAndCode("http://loinc.org", "8867-4"))
+                // .and(Observation.DATE.afterOrEquals().day("2026-01-01"))
+                .include(Observation.INCLUDE_PATIENT)
+                .sort().descending(Observation.DATE)
+                .count(50)
+                .returnBundle(Bundle.class)
+                .execute();
+
+        // List<Observation> all = new ArrayList<>();
+//        while (true) {
+//            all.addAll(BundleUtil.toListOfResourcesOfType(ctx, page, Observation.class));
+//            if (page.getLink(IBaseBundle.LINK_NEXT) == null) break;
+//            page = client.loadPage().next(page).execute();
+//        }
+        System.out.println("Here is the first page of the list:");
+        String jsonString = myContext.getCtx().newJsonParser().setPrettyPrint(true).encodeResourceToString(page);
+        System.out.println(jsonString);
+
+
+    }
+
+    private void doCrudOps(MyContext myContext) {
+        Patient p = new Patient();
+        p.addIdentifier().setSystem("urn:example:mrn").setValue("12345");
+        p.addName().setFamily("Testperson").addGiven("Ada");
+        p.setGender(Enumerations.AdministrativeGender.FEMALE);
+        p.setBirthDateElement(new DateType("1970-04-12"));
+
+        MethodOutcome created = myContext.getClient().create()
+                .resource(p)
+                .conditional().where(Patient.IDENTIFIER.exactly()
+                        .systemAndIdentifier("urn:example:mrn", "12345"))   // If-None-Exist
+                .prefer(PreferReturnEnum.REPRESENTATION)
+                .execute();
+        IIdType id = created.getId();          // e.g. Patient/1001/_history/1
+
+        Patient read = myContext.getClient().read().resource(Patient.class)
+                .withId(id.getIdPart()).execute();
+
+        read.getNameFirstRep().addGiven("M");
+        myContext.getClient().update().resource(read)
+                .withAdditionalHeader("If-Match", "W/\"" + read.getMeta().getVersionId() + "\"")
+                .execute();
+
+        myContext.getClient().delete().resourceById(new IdType("Patient", id.getIdPart())).execute();
+    }
+
 }
