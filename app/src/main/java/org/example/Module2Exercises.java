@@ -3,18 +3,20 @@
  */
 package org.example;
 
-import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.api.PreferReturnEnum;
-import ca.uhn.fhir.rest.client.api.IGenericClient;
-import ca.uhn.fhir.rest.client.api.ServerValidationModeEnum;
-import ca.uhn.fhir.rest.client.interceptor.LoggingInterceptor;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceVersionConflictException;
 import org.hl7.fhir.instance.model.api.IIdType;
 import org.hl7.fhir.r4.model.*;
+import org.hl7.fhir.r4.model.codesystems.ObservationStatus;
+
+import java.util.Date;
 
 public class Module2Exercises {
 
-    static void module2CrudOperations(MyContext myContext) {
+    static void crudOperations(MyContext myContext) {
 
         // Create a patient
         Patient p = new Patient();
@@ -80,9 +82,15 @@ public class Module2Exercises {
                 .setPrettyPrint(true)
                 .encodeResourceToString(historicalPatient);
         System.out.println(jsonOutput);
+
+        // delete the patient
+        methodOutcome = myContext.getClient().delete().resourceById(new IdType("Patient", id.getIdPart())).execute();
+        System.out.println("\n\nPatient deleted!");
+        System.out.println(Util.methodOutcomeToString(myContext.getCtx(), methodOutcome));
+
     }
 
-    static void module2GetMetadata(MyContext myContext) {
+    static void getMetadata(MyContext myContext) {
         // Get and print the metadata
         CapabilityStatement capabilityStatement = myContext.getClient()
                 .capabilities()
@@ -97,4 +105,138 @@ public class Module2Exercises {
         System.out.println(jsonOutput.substring(0, 100));
     }
 
+    public static void badRequests(MyContext myContext) {
+        // create patient with invalid birthday
+        try {
+            Patient p = new Patient();
+            p.addIdentifier().setSystem("urn:example:mrn").setValue("12345");
+            p.addName().setFamily("Testperson").addGiven("Ada");
+            DateType invalidBirthDate = new DateType();
+            invalidBirthDate.setValueAsString("1995-99-99"); // Invalid month and day
+            p.setBirthDateElement(invalidBirthDate);
+
+            MethodOutcome methodOutcome = myContext.getClient().create()
+                    .resource(p)
+                    .conditional().where(Patient.IDENTIFIER.exactly()
+                            .systemAndIdentifier("urn:example:mrn", "12345"))   // If-None-Exist
+                    .prefer(PreferReturnEnum.REPRESENTATION)
+                    .execute();
+            throw new RuntimeException("Should have failed to create patient with invalid birthday");
+        } catch (DataFormatException dataFormatException) {
+            System.out.println("\n\nPatient create exception, as expected: \n" + dataFormatException);
+        }
+
+        {
+            // create patient with an invalid element
+            Patient p = new Patient();
+
+            // Force the server to evaluate this resource as a US Core Patient
+            Meta meta = new Meta();
+            meta.addProfile("http://hl7.org");
+            p.setMeta(meta);
+
+            MethodOutcome outcome = myContext.getClient().validate()
+                    .resource(p)
+                    .execute();
+
+            // 3. Extract the server's validation report
+            OperationOutcome validationReport = (OperationOutcome) outcome.getOperationOutcome();
+
+            // 4. Inspect the validation results. make sure you get at least one error
+            boolean errorFound = false;
+            for (OperationOutcome.OperationOutcomeIssueComponent issue : validationReport.getIssue()) {
+                if (issue.getSeverity().getDisplay().equals("Error")) {
+                    System.out.println("\n\nSuccessfully got an Error response: " + issue.getDiagnostics());
+                    errorFound = true;
+                    break;
+                }
+            }
+            if (!errorFound) {
+                throw new RuntimeException("Expected a validation error for incomplete patient");
+            }
+        }
+
+        // Try to update a deleted patient
+        try {
+            // Create a patient
+            Patient p = new Patient();
+            p.addIdentifier().setSystem("urn:example:mrn").setValue("12345");
+            p.addName().setFamily("Testperson").addGiven("Ada");
+
+            MethodOutcome methodOutcome = myContext.getClient().create()
+                    .resource(p)
+                    .conditional().where(Patient.IDENTIFIER.exactly()
+                            .systemAndIdentifier("urn:example:mrn", "12345"))   // If-None-Exist
+                    .prefer(PreferReturnEnum.REPRESENTATION)
+                    .execute();
+            IIdType id = methodOutcome.getId();
+
+            // delete the patient
+            myContext.getClient().delete().resourceById(new IdType("Patient", id.getIdPart())).execute();
+
+
+            // update the deleted patient
+            p.getNameFirstRep().addGiven("M");
+            p.setId(id);
+            myContext.getClient().update().resource(p)
+                    .withAdditionalHeader("If-Match", "W/\"" + p.getMeta().getVersionId() + "\"")
+                    .execute();
+            throw new RuntimeException("Should not be able to update deleted patient");
+        } catch (ResourceVersionConflictException e) {
+            System.out.println("\n\nExpected version exception: " + e);
+        }
+    }
+
+    public static void patientWithObservation(MyContext myContext) {
+        // Create a patient
+        Patient p = new Patient();
+        p.addIdentifier().setSystem("urn:example:mrn").setValue("12345");
+        p.addName().setFamily("Testperson").addGiven("Ada");
+
+        MethodOutcome methodOutcome = myContext.getClient().create()
+                .resource(p)
+                .conditional().where(Patient.IDENTIFIER.exactly()
+                        .systemAndIdentifier("urn:example:mrn", "12345"))   // If-None-Exist
+                .prefer(PreferReturnEnum.REPRESENTATION)
+                .execute();
+        IIdType id = methodOutcome.getId();
+
+        // create the observation
+        Observation observation = new Observation();
+        observation.setStatus(Observation.ObservationStatus.FINAL);
+
+        // link to patient
+        // Safely transforms "https://example.com" into "Patient/12345"
+        Reference patientRef = new Reference(methodOutcome.getId().toUnqualifiedVersionless());
+        observation.setSubject(patientRef);
+
+        // set the code
+        CodeableConcept code = new CodeableConcept();
+        code.addCoding()
+                .setSystem("http://loinc.org")
+                .setCode("29463-7")
+                .setDisplay("Body Weight");
+        observation.setCode(code);
+
+        // set the value
+        Quantity value = new Quantity();
+        value.setValue(75)
+                .setUnit("kg")
+                .setSystem("http://unitsofmeasure.org")
+                .setCode("kg");
+        observation.setValue(value);
+
+        // set the time
+        observation.setEffective(new DateTimeType(new Date()));
+
+        MethodOutcome outcome = myContext.getClient().create()
+                .resource(observation)
+                .execute();
+
+        // Print out the newly generated server assigned Observation ID
+        System.out.println("\n\nObservation for new patient created!");
+        System.out.println(Util.methodOutcomeToString(myContext.getCtx(), outcome));
+
+
+    }
 }

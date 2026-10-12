@@ -3,12 +3,8 @@
  */
 package org.example;
 
-import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.api.PreferReturnEnum;
-import ca.uhn.fhir.rest.client.api.IGenericClient;
-import ca.uhn.fhir.rest.client.api.ServerValidationModeEnum;
-import ca.uhn.fhir.rest.client.interceptor.LoggingInterceptor;
 
 import org.hl7.fhir.instance.model.api.IIdType;
 import org.hl7.fhir.r4.model.*;
@@ -33,12 +29,14 @@ public class App {
         // app.doCrudOps(localContext);
         // app.doBundleRead(hapiFhirContext);
         // app.doTransaction(localContext);
-        app.module2(localContext);
+        app.module2(localContext, hapiFhirContext);
     }
 
-    private void module2(MyContext myContext) {
-        Module2Exercises.module2GetMetadata(myContext);
-        Module2Exercises.module2CrudOperations(myContext);
+    private void module2(MyContext localContext, MyContext hapiFhirContext) {
+        Module2Exercises.getMetadata(hapiFhirContext);
+        Module2Exercises.crudOperations(localContext);
+        Module2Exercises.badRequests(localContext);
+        Module2Exercises.patientWithObservation(localContext);
     }
 
 
