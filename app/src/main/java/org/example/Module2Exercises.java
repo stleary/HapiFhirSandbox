@@ -14,134 +14,87 @@ import org.hl7.fhir.r4.model.*;
 
 public class Module2Exercises {
 
-    public String getGreeting() {
-        return "Hello World!";
-    }
+    static void module2CrudOperations(MyContext myContext) {
 
-    class MyContext {
-        private String url;
-        private FhirContext ctx;
-        private IGenericClient client;
-        public MyContext(String url, FhirContext ctx, IGenericClient client) {
-            this.url = url;
-            this.ctx = ctx;
-            this.client = client;
-        }
-        public String getUrl() {
-            return url;
-        }
-        public void setUrl(String url) {
-            this.url = url;
-        }
-        public FhirContext getCtx() {
-            return ctx;
-        }
-        public IGenericClient getClient() {
-            return client;
-        }
-    }
-
-    public static void main(String[] args) {
-
-        System.out.println(new Module2Exercises().getGreeting());
-
-        Module2Exercises app = new Module2Exercises();
-        MyContext localContext = app.setupFhirCLient("http://localhost:8080/fhir");
-        MyContext hapiFhirContext = app.setupFhirCLient("https://hapi.fhir.org/baseR4");
-        // app.doCrudOps(localContext);
-        app.doBundleRead(localContext);
-        // app.doTransaction(localContext);
-    }
-
-    private MyContext setupFhirCLient(String url) {
-
-        FhirContext ctx = FhirContext.forR4();
-        ctx.getRestfulClientFactory().setSocketTimeout(30_000);
-        // By default the client GETs /metadata before its first call; skip that for known servers
-        ctx.getRestfulClientFactory().setServerValidationMode(ServerValidationModeEnum.NEVER);
-
-        // client = ctx.newRestfulGenericClient("http://localhost:8080/fhir");
-        IGenericClient client = ctx.newRestfulGenericClient(url);
-        client.registerInterceptor(new LoggingInterceptor(true));     // logs requests/responses
-        // client.registerInterceptor(new BearerTokenAuthInterceptor(token));  // Module 7
-        // In Spring Boot, make FhirContext and IGenericClient @Beans.
-        return new MyContext(url, ctx, client);
-    }
-
-    private void doTransaction(MyContext myContext) {
+        // Create a patient
         Patient p = new Patient();
         p.addIdentifier().setSystem("urn:example:mrn").setValue("12345");
         p.addName().setFamily("Testperson").addGiven("Ada");
 
-        Bundle tx = new Bundle().setType(Bundle.BundleType.TRANSACTION);
-        String patientUrn = IdType.newRandomUuid().getValue();   // "urn:uuid:..."
-        tx.addEntry().setFullUrl(patientUrn).setResource(p)
-                .getRequest().setMethod(Bundle.HTTPVerb.POST).setUrl("Patient");
-
-        Observation hr = new Observation();
-        hr.setStatus(Observation.ObservationStatus.FINAL);
-        hr.getCode().addCoding().setSystem("http://loinc.org").setCode("8867-4");
-        hr.setSubject(new Reference(patientUrn));
-        hr.setValue(new Quantity().setValue(72)
-                .setSystem("http://unitsofmeasure.org").setCode("/min"));
-        tx.addEntry().setResource(hr)
-                .getRequest().setMethod(Bundle.HTTPVerb.POST).setUrl("Observation");
-
-        Bundle resp = myContext.getClient().transaction().withBundle(tx).execute();
-        resp.getEntry().forEach(e -> System.out.println(e.getResponse().getLocation()));
-
-   }
-
-
-    // doesn't find anything yet in local host
-    private void doBundleRead(MyContext myContext) {
-        Bundle page = myContext.getClient().search()
-                .forResource(Observation.class)
-                .where(Observation.CODE.exactly().systemAndCode("http://loinc.org", "8867-4"))
-                // .and(Observation.DATE.afterOrEquals().day("2026-01-01"))
-                .include(Observation.INCLUDE_PATIENT)
-                .sort().descending(Observation.DATE)
-                .count(50)
-                .returnBundle(Bundle.class)
-                .execute();
-
-        // List<Observation> all = new ArrayList<>();
-//        while (true) {
-//            all.addAll(BundleUtil.toListOfResourcesOfType(ctx, page, Observation.class));
-//            if (page.getLink(IBaseBundle.LINK_NEXT) == null) break;
-//            page = client.loadPage().next(page).execute();
-//        }
-        System.out.println("Here is the first page of the list:");
-        String jsonString = myContext.getCtx().newJsonParser().setPrettyPrint(true).encodeResourceToString(page);
-        System.out.println(jsonString);
-
-
-    }
-
-    private void doCrudOps(MyContext myContext) {
-        Patient p = new Patient();
-        p.addIdentifier().setSystem("urn:example:mrn").setValue("12345");
-        p.addName().setFamily("Testperson").addGiven("Ada");
-        p.setGender(Enumerations.AdministrativeGender.FEMALE);
-        p.setBirthDateElement(new DateType("1970-04-12"));
-
-        MethodOutcome created = myContext.getClient().create()
+        MethodOutcome methodOutcome = myContext.getClient().create()
                 .resource(p)
                 .conditional().where(Patient.IDENTIFIER.exactly()
                         .systemAndIdentifier("urn:example:mrn", "12345"))   // If-None-Exist
                 .prefer(PreferReturnEnum.REPRESENTATION)
                 .execute();
-        IIdType id = created.getId();          // e.g. Patient/1001/_history/1
+        IIdType id = methodOutcome.getId();
 
+        System.out.println("\n\nPatient created successfully!");
+        System.out.println(Util.methodOutcomeToString(myContext.getCtx(), methodOutcome));
+
+        // read the patient
         Patient read = myContext.getClient().read().resource(Patient.class)
                 .withId(id.getIdPart()).execute();
 
+        String jsonOutput = myContext.getCtx().newJsonParser()
+                .setPrettyPrint(true)
+                .encodeResourceToString(read);
+        System.out.println("\n\nPatient 1st read successfully!");
+        System.out.println(jsonOutput);
+
+        // update patient 1st
         read.getNameFirstRep().addGiven("M");
-        myContext.getClient().update().resource(read)
+        methodOutcome = myContext.getClient().update().resource(read)
                 .withAdditionalHeader("If-Match", "W/\"" + read.getMeta().getVersionId() + "\"")
                 .execute();
+        System.out.println("\n\nPatient updated addGiven successfully!");
+        System.out.println(Util.methodOutcomeToString(myContext.getCtx(), methodOutcome));
 
-        myContext.getClient().delete().resourceById(new IdType("Patient", id.getIdPart())).execute();
+        // update patient 2nd
+        Patient updatedPatient = (Patient) methodOutcome.getResource();
+        Coding marriedCoding = new Coding()
+                .setSystem("http://terminology.hl7.org/CodeSystem/v3-MaritalStatus")
+                .setCode("M")
+                .setDisplay("Married");
+        CodeableConcept maritalStatus = new CodeableConcept();
+        maritalStatus.addCoding(marriedCoding);
+        maritalStatus.setText("Married");
+        updatedPatient.setMaritalStatus(maritalStatus);
+        methodOutcome = myContext.getClient().update().resource(updatedPatient)
+                .withAdditionalHeader("If-Match", "W/\"" + methodOutcome.getId().getVersionIdPart() + "\"")
+                .execute();
+        System.out.println("\n\nPatient updated married successfully!");
+        System.out.println(Util.methodOutcomeToString(myContext.getCtx(), methodOutcome));
+
+        // vread previous version
+        // convert string to number, subtract 1, then convert back to string
+        String versionId = methodOutcome.getId().getVersionIdPart();
+        int version = Integer.parseInt(versionId) - 1;
+        versionId = Integer.toString(version);
+        Patient historicalPatient = myContext.getClient().read()
+                .resource(Patient.class)
+                .withIdAndVersion(methodOutcome.getId().getIdPart(), versionId)
+                .execute();
+        System.out.println("\n\nPatient vread successfully!");
+        jsonOutput = myContext.getCtx().newJsonParser()
+                .setPrettyPrint(true)
+                .encodeResourceToString(historicalPatient);
+        System.out.println(jsonOutput);
+    }
+
+    static void module2GetMetadata(MyContext myContext) {
+        // Get and print the metadata
+        CapabilityStatement capabilityStatement = myContext.getClient()
+                .capabilities()
+                .ofType(CapabilityStatement.class)
+                .execute();
+        String jsonOutput = myContext.getCtx().newJsonParser()
+                .setPrettyPrint(true)
+                .encodeResourceToString(capabilityStatement);
+        // verbose output
+        // System.out.println(jsonOutput);
+        System.out.println("\n\nCapabilities read successfully! Showing truncated result:");
+        System.out.println(jsonOutput.substring(0, 100));
     }
 
 }

@@ -26,34 +26,21 @@ public class App {
         System.out.println(new App().getGreeting());
 
         App app = new App();
-        MyContext localContext = app.setupFhirClient("http://localhost:8080/fhir");
-        MyContext hapiFhirContext = app.setupFhirClient("https://hapi.fhir.org/baseR4");
+        MyContext localContext = Util.setupFhirClient("http://localhost:8080/fhir");
+        MyContext hapiFhirContext = Util.setupFhirClient("https://hapi.fhir.org/baseR4");
 
         // These are test methods to make sure crud, bundle, and transactions are working
         // app.doCrudOps(localContext);
         // app.doBundleRead(hapiFhirContext);
         // app.doTransaction(localContext);
+        app.module2(localContext);
     }
 
-    /**
-     * Sets up the local and hapi fhir clients
-     * @param url url for fhir server
-     * @return MyContext instance for the selected url
-     */
-    private MyContext setupFhirClient(String url) {
-
-        FhirContext ctx = FhirContext.forR4();
-        ctx.getRestfulClientFactory().setSocketTimeout(30_000);
-        // By default the client GETs /metadata before its first call; skip that for known servers
-        ctx.getRestfulClientFactory().setServerValidationMode(ServerValidationModeEnum.NEVER);
-
-        // client = ctx.newRestfulGenericClient("http://localhost:8080/fhir");
-        IGenericClient client = ctx.newRestfulGenericClient(url);
-        client.registerInterceptor(new LoggingInterceptor(true));     // logs requests/responses
-        // client.registerInterceptor(new BearerTokenAuthInterceptor(token));  // Module 7
-        // In Spring Boot, make FhirContext and IGenericClient @Beans.
-        return new MyContext(url, ctx, client);
+    private void module2(MyContext myContext) {
+        Module2Exercises.module2GetMetadata(myContext);
+        Module2Exercises.module2CrudOperations(myContext);
     }
+
 
     private void doTransaction(MyContext myContext) {
         Patient p = new Patient();
