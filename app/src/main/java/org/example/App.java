@@ -26,9 +26,9 @@ public class App {
         MyContext hapiFhirContext = Util.setupFhirClient("https://hapi.fhir.org/baseR4");
 
         // These are test methods to make sure crud, bundle, and transactions are working
-        // app.doCrudOps(localContext);
-        // app.doBundleRead(hapiFhirContext);
-        // app.doTransaction(localContext);
+        app.doCrudOps(localContext);
+        app.doBundleRead(hapiFhirContext);
+        app.doTransaction(localContext);
         app.module2(localContext, hapiFhirContext);
     }
 
@@ -42,7 +42,7 @@ public class App {
 
     private void doTransaction(MyContext myContext) {
         Patient p = new Patient();
-        p.addIdentifier().setSystem("urn:example:mrn").setValue("12345");
+        p.addIdentifier().setSystem("urn:example:mrn").setValue(Util.getNextPatientId());
         p.addName().setFamily("Testperson").addGiven("Ada");
 
         Bundle tx = new Bundle().setType(Bundle.BundleType.TRANSACTION);
@@ -87,12 +87,12 @@ public class App {
         String jsonString = myContext.getCtx().newJsonParser().setPrettyPrint(true).encodeResourceToString(page);
         System.out.println(jsonString);
 
-
     }
 
     private void doCrudOps(MyContext myContext) {
         Patient p = new Patient();
-        p.addIdentifier().setSystem("urn:example:mrn").setValue("12345");
+        String patientId = Util.getNextPatientId();
+        p.addIdentifier().setSystem("urn:example:mrn").setValue(patientId);
         p.addName().setFamily("Testperson").addGiven("Ada");
         p.setGender(Enumerations.AdministrativeGender.FEMALE);
         p.setBirthDateElement(new DateType("1970-04-12"));
@@ -100,7 +100,7 @@ public class App {
         MethodOutcome created = myContext.getClient().create()
                 .resource(p)
                 .conditional().where(Patient.IDENTIFIER.exactly()
-                        .systemAndIdentifier("urn:example:mrn", "12345"))   // If-None-Exist
+                        .systemAndIdentifier("urn:example:mrn", patientId))   // If-None-Exist
                 .prefer(PreferReturnEnum.REPRESENTATION)
                 .execute();
         IIdType id = created.getId();          // e.g. Patient/1001/_history/1

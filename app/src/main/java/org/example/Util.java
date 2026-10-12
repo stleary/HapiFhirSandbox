@@ -64,5 +64,11 @@ public class Util {
         return sb.toString();
     }
 
+    private static String id = "12340";
+    static String getNextPatientId() {
+        int i = Integer.parseInt(id) + 1;
+        id = Integer.toString(i);
+        return id;
+    }
 
 }

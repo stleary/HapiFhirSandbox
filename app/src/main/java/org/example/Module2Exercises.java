@@ -20,13 +20,14 @@ public class Module2Exercises {
 
         // Create a patient
         Patient p = new Patient();
-        p.addIdentifier().setSystem("urn:example:mrn").setValue("12345");
+        String patientId = Util.getNextPatientId();
+        p.addIdentifier().setSystem("urn:example:mrn").setValue(patientId);
         p.addName().setFamily("Testperson").addGiven("Ada");
 
         MethodOutcome methodOutcome = myContext.getClient().create()
                 .resource(p)
                 .conditional().where(Patient.IDENTIFIER.exactly()
-                        .systemAndIdentifier("urn:example:mrn", "12345"))   // If-None-Exist
+                        .systemAndIdentifier("urn:example:mrn", patientId))   // If-None-Exist
                 .prefer(PreferReturnEnum.REPRESENTATION)
                 .execute();
         IIdType id = methodOutcome.getId();
@@ -107,9 +108,10 @@ public class Module2Exercises {
 
     public static void badRequests(MyContext myContext) {
         // create patient with invalid birthday
+        String patientId = Util.getNextPatientId();
         try {
             Patient p = new Patient();
-            p.addIdentifier().setSystem("urn:example:mrn").setValue("12345");
+            p.addIdentifier().setSystem("urn:example:mrn").setValue(patientId);
             p.addName().setFamily("Testperson").addGiven("Ada");
             DateType invalidBirthDate = new DateType();
             invalidBirthDate.setValueAsString("1995-99-99"); // Invalid month and day
@@ -118,7 +120,7 @@ public class Module2Exercises {
             MethodOutcome methodOutcome = myContext.getClient().create()
                     .resource(p)
                     .conditional().where(Patient.IDENTIFIER.exactly()
-                            .systemAndIdentifier("urn:example:mrn", "12345"))   // If-None-Exist
+                            .systemAndIdentifier("urn:example:mrn", patientId))   // If-None-Exist
                     .prefer(PreferReturnEnum.REPRESENTATION)
                     .execute();
             throw new RuntimeException("Should have failed to create patient with invalid birthday");
@@ -160,13 +162,13 @@ public class Module2Exercises {
         try {
             // Create a patient
             Patient p = new Patient();
-            p.addIdentifier().setSystem("urn:example:mrn").setValue("12345");
+            p.addIdentifier().setSystem("urn:example:mrn").setValue(patientId);
             p.addName().setFamily("Testperson").addGiven("Ada");
 
             MethodOutcome methodOutcome = myContext.getClient().create()
                     .resource(p)
                     .conditional().where(Patient.IDENTIFIER.exactly()
-                            .systemAndIdentifier("urn:example:mrn", "12345"))   // If-None-Exist
+                            .systemAndIdentifier("urn:example:mrn", patientId))   // If-None-Exist
                     .prefer(PreferReturnEnum.REPRESENTATION)
                     .execute();
             IIdType id = methodOutcome.getId();
@@ -190,13 +192,14 @@ public class Module2Exercises {
     public static void patientWithObservation(MyContext myContext) {
         // Create a patient
         Patient p = new Patient();
-        p.addIdentifier().setSystem("urn:example:mrn").setValue("12345");
+        String patientId = Util.getNextPatientId();
+        p.addIdentifier().setSystem("urn:example:mrn").setValue(patientId);
         p.addName().setFamily("Testperson").addGiven("Ada");
 
         MethodOutcome methodOutcome = myContext.getClient().create()
                 .resource(p)
                 .conditional().where(Patient.IDENTIFIER.exactly()
-                        .systemAndIdentifier("urn:example:mrn", "12345"))   // If-None-Exist
+                        .systemAndIdentifier("urn:example:mrn", patientId))   // If-None-Exist
                 .prefer(PreferReturnEnum.REPRESENTATION)
                 .execute();
         IIdType id = methodOutcome.getId();
