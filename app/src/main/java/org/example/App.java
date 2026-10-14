@@ -21,18 +21,49 @@ public class App {
 
         System.out.println(new App().getGreeting());
 
-        App app = new App();
         MyContext localContext = Util.setupFhirClient("http://localhost:8080/fhir");
         MyContext hapiFhirContext = Util.setupFhirClient("https://hapi.fhir.org/baseR4");
 
-        // These are test methods to make sure crud, bundle, and transactions are working
-        app.doCrudOps(localContext);
-        app.doBundleRead(hapiFhirContext);
-        app.doTransaction(localContext);
-        app.module2(localContext, hapiFhirContext);
+        module2(localContext, hapiFhirContext);
+        module3(localContext, hapiFhirContext);
+        module4(localContext, hapiFhirContext);
     }
 
-    private void module2(MyContext localContext, MyContext hapiFhirContext) {
+
+    /**
+     * Exercises for module4. CrudOps might be from another module,
+     * but since it is a basic operation, I will leave it here
+     * @param localContext
+     * @param hapiFhirContext
+     */
+    private static void module4(MyContext localContext, MyContext hapiFhirContext) {
+        Module4Exercises.doCrudOps(localContext);
+        Module4Exercises.doBundleRead(hapiFhirContext);
+        Module4Exercises.doTransaction(localContext);
+    }
+
+    /**
+     * Exercises for module4. CrudOps might be from another module,
+     * but since it is a basic operation, I will leave it here
+     * @param localContext
+     * @param hapiFhirContext
+     */
+    private static void module3(MyContext localContext, MyContext hapiFhirContext) {
+        Module3Exercises.findPatients(hapiFhirContext);
+        Module3Exercises.findObservations(hapiFhirContext);
+        Module3Exercises.findPatCondEnc(hapiFhirContext);
+        Module3Exercises.patMedRequest(hapiFhirContext);
+        Module3Exercises.unsupportedSearch(hapiFhirContext
+        );
+    }
+
+    /**
+     * Exercises for module4. CrudOps might be from another module,
+     * but since it is a basic operation, I will leave it here
+     * @param localContext
+     * @param hapiFhirContext
+     */
+    private static void module2(MyContext localContext, MyContext hapiFhirContext) {
         Module2Exercises.getMetadata(hapiFhirContext);
         Module2Exercises.crudOperations(localContext);
         Module2Exercises.badRequests(localContext);
@@ -40,80 +71,5 @@ public class App {
     }
 
 
-    private void doTransaction(MyContext myContext) {
-        Patient p = new Patient();
-        p.addIdentifier().setSystem("urn:example:mrn").setValue(Util.getNextPatientId());
-        p.addName().setFamily("Testperson").addGiven("Ada");
-
-        Bundle tx = new Bundle().setType(Bundle.BundleType.TRANSACTION);
-        String patientUrn = IdType.newRandomUuid().getValue();   // "urn:uuid:..."
-        tx.addEntry().setFullUrl(patientUrn).setResource(p)
-                .getRequest().setMethod(Bundle.HTTPVerb.POST).setUrl("Patient");
-
-        Observation hr = new Observation();
-        hr.setStatus(Observation.ObservationStatus.FINAL);
-        hr.getCode().addCoding().setSystem("http://loinc.org").setCode("8867-4");
-        hr.setSubject(new Reference(patientUrn));
-        hr.setValue(new Quantity().setValue(72)
-                .setSystem("http://unitsofmeasure.org").setCode("/min"));
-        tx.addEntry().setResource(hr)
-                .getRequest().setMethod(Bundle.HTTPVerb.POST).setUrl("Observation");
-
-        Bundle resp = myContext.getClient().transaction().withBundle(tx).execute();
-        resp.getEntry().forEach(e -> System.out.println(e.getResponse().getLocation()));
-
-   }
-
-
-    // doesn't find anything yet in local host
-    private void doBundleRead(MyContext myContext) {
-        Bundle page = myContext.getClient().search()
-                .forResource(Observation.class)
-                .where(Observation.CODE.exactly().systemAndCode("http://loinc.org", "8867-4"))
-                // .and(Observation.DATE.afterOrEquals().day("2026-01-01"))
-                .include(Observation.INCLUDE_PATIENT)
-                .sort().descending(Observation.DATE)
-                .count(50)
-                .returnBundle(Bundle.class)
-                .execute();
-
-        // List<Observation> all = new ArrayList<>();
-//        while (true) {
-//            all.addAll(BundleUtil.toListOfResourcesOfType(ctx, page, Observation.class));
-//            if (page.getLink(IBaseBundle.LINK_NEXT) == null) break;
-//            page = client.loadPage().next(page).execute();
-//        }
-        System.out.println("Here is the first page of the list:");
-        String jsonString = myContext.getCtx().newJsonParser().setPrettyPrint(true).encodeResourceToString(page);
-        System.out.println(jsonString);
-
-    }
-
-    private void doCrudOps(MyContext myContext) {
-        Patient p = new Patient();
-        String patientId = Util.getNextPatientId();
-        p.addIdentifier().setSystem("urn:example:mrn").setValue(patientId);
-        p.addName().setFamily("Testperson").addGiven("Ada");
-        p.setGender(Enumerations.AdministrativeGender.FEMALE);
-        p.setBirthDateElement(new DateType("1970-04-12"));
-
-        MethodOutcome created = myContext.getClient().create()
-                .resource(p)
-                .conditional().where(Patient.IDENTIFIER.exactly()
-                        .systemAndIdentifier("urn:example:mrn", patientId))   // If-None-Exist
-                .prefer(PreferReturnEnum.REPRESENTATION)
-                .execute();
-        IIdType id = created.getId();          // e.g. Patient/1001/_history/1
-
-        Patient read = myContext.getClient().read().resource(Patient.class)
-                .withId(id.getIdPart()).execute();
-
-        read.getNameFirstRep().addGiven("M");
-        myContext.getClient().update().resource(read)
-                .withAdditionalHeader("If-Match", "W/\"" + read.getMeta().getVersionId() + "\"")
-                .execute();
-
-        myContext.getClient().delete().resourceById(new IdType("Patient", id.getIdPart())).execute();
-    }
 
 }

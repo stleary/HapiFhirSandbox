@@ -28,6 +28,12 @@ public class Util {
         return new MyContext(url, ctx, client);
     }
 
+    /**
+     * Converts the MethodOutcome response to a CRUD operation to a descriptive string for logging
+     * @param ctx the FHIR server context
+     * @param outcome the MethodOutcome to be converted
+     * @return a string that contains the outcome content
+     */
     static String methodOutcomeToString(FhirContext ctx, MethodOutcome outcome) {
         StringBuilder sb = new StringBuilder();
         sb.append("--- MethodOutcome Details ---\n");
@@ -64,6 +70,10 @@ public class Util {
         return sb.toString();
     }
 
+    /**
+     * Convenience method to return a monotonic increasing numeric string for the patient identifier
+     * (this is not the patient id field)
+     */
     private static String id = "12340";
     static String getNextPatientId() {
         int i = Integer.parseInt(id) + 1;

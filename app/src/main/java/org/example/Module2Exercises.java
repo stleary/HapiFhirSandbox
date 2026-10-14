@@ -16,18 +16,26 @@ import java.util.Date;
 
 public class Module2Exercises {
 
+    /**
+     * Demonstrates the HAPI FHIR REST CRUD operations with a simple Patient resource
+     * @param myContext the context object to use for the operations (holds the context and server objects)
+     */
     static void crudOperations(MyContext myContext) {
 
-        // Create a patient
+        // Build a Patient resource with a identifier and name
         Patient p = new Patient();
+        // Generates a unique patient number with each request
         String patientId = Util.getNextPatientId();
         p.addIdentifier().setSystem("urn:example:mrn").setValue(patientId);
         p.addName().setFamily("Testperson").addGiven("Ada");
 
+        // Execute the Create operation
         MethodOutcome methodOutcome = myContext.getClient().create()
                 .resource(p)
+                // If-None-Exist - only create if there is not a matching identifier
                 .conditional().where(Patient.IDENTIFIER.exactly()
-                        .systemAndIdentifier("urn:example:mrn", patientId))   // If-None-Exist
+                        .systemAndIdentifier("urn:example:mrn", patientId))
+                // Returns the new (or matching) patient in the response
                 .prefer(PreferReturnEnum.REPRESENTATION)
                 .execute();
         IIdType id = methodOutcome.getId();
@@ -91,6 +99,10 @@ public class Module2Exercises {
 
     }
 
+    /**
+     * Retrieves server capabilities
+     * @param myContext server context
+     */
     static void getMetadata(MyContext myContext) {
         // Get and print the metadata
         CapabilityStatement capabilityStatement = myContext.getClient()
@@ -106,6 +118,10 @@ public class Module2Exercises {
         System.out.println(jsonOutput.substring(0, 100));
     }
 
+    /**
+     * Sends some bad requests intended to cause errors
+     * @param myContext server context
+     */
     public static void badRequests(MyContext myContext) {
         // create patient with invalid birthday
         String patientId = Util.getNextPatientId();
@@ -189,6 +205,10 @@ public class Module2Exercises {
         }
     }
 
+    /**
+     * Creates linked patient and observation resources on the server
+     * @param myContext server context
+     */
     public static void patientWithObservation(MyContext myContext) {
         // Create a patient
         Patient p = new Patient();
